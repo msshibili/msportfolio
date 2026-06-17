@@ -1733,7 +1733,7 @@ button, input, textarea {
   inset: 0;
   background-color: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
-  display: flex;
+  display: none; /* Completely hidden from hit-testing for non-admins */
   align-items: center;
   justify-content: center;
   gap: 12px;
@@ -1743,7 +1743,12 @@ button, input, textarea {
   transition: opacity var(--transition-fast);
 }
 
-.project-card:hover .project-admin-overlay {
+/* Only enable layout display when admin mode is active */
+.admin-active .project-admin-overlay {
+  display: flex;
+}
+
+.admin-active .project-card:hover .project-admin-overlay {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1885,22 +1890,25 @@ select option {
 
 .lightbox-container {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 90vw;
+  height: 90vh;
+  max-width: 1200px;
   display: flex;
   justify-content: center;
   align-items: center;
+  pointer-events: none; /* Let clicks pass through container to the modal background */
 }
 
 #lightbox-img {
   max-width: 100%;
   max-height: 85vh;
   border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 107, 43, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 107, 43, 0.25);
   border: 1px solid var(--border-color);
   object-fit: contain;
   transform: scale(0.95);
   transition: transform var(--transition-smooth);
+  pointer-events: auto; /* Re-enable clicks on the image itself */
 }
 
 #image-lightbox-modal.active #lightbox-img {
@@ -1908,31 +1916,31 @@ select option {
 }
 
 .lightbox-close {
-  position: absolute;
-  top: -50px;
-  right: 0;
+  position: fixed;
+  top: 25px;
+  right: 25px;
   background: rgba(4, 4, 5, 0.85);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  font-size: 2rem;
-  line-height: 38px;
-  text-align: center;
+  font-size: 1.8rem;
   cursor: pointer;
   transition: var(--transition-fast);
-  z-index: 6001;
+  z-index: 6100;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .lightbox-close:hover {
   color: var(--primary);
   border-color: var(--primary);
   transform: scale(1.1);
-  box-shadow: 0 0 10px var(--primary-glow);
+  box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .project-img {
@@ -1940,9 +1948,21 @@ select option {
 }
 
 @media (max-width: 768px) {
+  .lightbox-container {
+    width: 95vw;
+    height: 95vh;
+  }
+  
+  #lightbox-img {
+    max-height: 80vh;
+  }
+
   .lightbox-close {
-    top: -55px;
-    right: 5px;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.6rem;
   }
 }
 
