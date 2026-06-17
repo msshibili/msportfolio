@@ -1385,61 +1385,51 @@ function initAdminDashboard() {
 
       isCurrentlyUploading = true;
       progressContainer.style.display = "block";
-      progressPercent.textContent = "0%";
-      progressFill.style.width = "0%";
+      progressPercent.textContent = "Compressing image...";
+      progressFill.style.width = "10%";
 
       if (isFirebaseEnabled) {
-        // Compress image before uploading
-        compressImage(file, 800, 800, 0.75)
+        // Free Option: Compress image and convert it to Base64 to save directly in Firestore
+        // (Bypasses Firebase Storage entirely so you can stay on the 100% free Spark plan)
+        compressImage(file, 600, 600, 0.6)
           .then((compressedBlob) => {
-            const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${fileName}.jpg`);
-            const uploadTask = storageRef.put(compressedBlob);
+            progressPercent.textContent = "Processing image...";
+            progressFill.style.width = "50%";
 
-            uploadTask.on('state_changed',
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                progressPercent.textContent = `${progress}%`;
-                progressFill.style.width = `${progress}%`;
-              },
-              (error) => {
-                console.error("Storage upload failed:", error);
-                alert("Storage upload failed: " + error.message);
-                isCurrentlyUploading = false;
-                progressContainer.style.display = "none";
-              },
-              () => {
-                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                  currentUploadUrl = downloadURL;
-                  isCurrentlyUploading = false;
-                });
-              }
-            );
+            const reader = new FileReader();
+            reader.onload = function (event) {
+              currentUploadUrl = event.target.result;
+              isCurrentlyUploading = false;
+              progressPercent.textContent = "Ready to Save (Optimized Base64)";
+              progressFill.style.width = "100%";
+            };
+            reader.onerror = function (err) {
+              console.error("FileReader failed:", err);
+              alert("Processing image failed: " + err.message);
+              isCurrentlyUploading = false;
+              progressPercent.textContent = "Processing failed";
+            };
+            reader.readAsDataURL(compressedBlob);
           })
           .catch((err) => {
-            console.error("Compression failed, uploading original file:", err);
-            const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${file.name}`);
-            const uploadTask = storageRef.put(file);
+            console.error("Compression failed, using original file as Base64:", err);
+            progressPercent.textContent = "Converting original file...";
+            progressFill.style.width = "50%";
 
-            uploadTask.on('state_changed',
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                progressPercent.textContent = `${progress}%`;
-                progressFill.style.width = `${progress}%`;
-              },
-              (error) => {
-                console.error("Storage upload failed:", error);
-                alert("Storage upload failed: " + error.message);
-                isCurrentlyUploading = false;
-                progressContainer.style.display = "none";
-              },
-              () => {
-                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                  currentUploadUrl = downloadURL;
-                  isCurrentlyUploading = false;
-                });
-              }
-            );
+            const reader = new FileReader();
+            reader.onload = function (event) {
+              currentUploadUrl = event.target.result;
+              isCurrentlyUploading = false;
+              progressPercent.textContent = "Ready to Save (Base64)";
+              progressFill.style.width = "100%";
+            };
+            reader.onerror = function (err) {
+              console.error("FileReader failed:", err);
+              alert("Processing image failed: " + err.message);
+              isCurrentlyUploading = false;
+              progressPercent.textContent = "Processing failed";
+            };
+            reader.readAsDataURL(file);
           });
       } else {
         // Sandbox FileReader base64 fallback
@@ -1447,13 +1437,13 @@ function initAdminDashboard() {
         reader.onload = function (event) {
           currentUploadUrl = event.target.result;
           isCurrentlyUploading = false;
-          progressPercent.textContent = "100%";
+          progressPercent.textContent = "Sandbox Mode: Load Complete!";
           progressFill.style.width = "100%";
         };
         reader.onerror = function (err) {
           console.error("FileReader failed:", err);
           isCurrentlyUploading = false;
-          progressContainer.style.display = "none";
+          progressPercent.textContent = "Load failed";
         };
         reader.readAsDataURL(file);
       }
@@ -1751,6 +1741,23 @@ function setAdminState(isLoggedIn) {
       footerStatus.className = "status-unlocked";
     }
     if (actionsBar) actionsBar.style.display = "flex";
+
+    // Update Firebase connection status badge
+    const statusDot = document.getElementById("firebase-status-dot");
+    const statusText = document.getElementById("firebase-status-text");
+    if (statusDot && statusText) {
+      if (isFirebaseEnabled) {
+        statusDot.style.backgroundColor = "#10b981"; // neon green
+        statusDot.style.boxShadow = "0 0 10px #10b981";
+        statusText.textContent = "CLOUD DB ONLINE (FIREBASE)";
+        statusText.style.color = "#10b981";
+      } else {
+        statusDot.style.backgroundColor = "#ff6b2b"; // custom theme orange/amber
+        statusDot.style.boxShadow = "0 0 10px #ff6b2b";
+        statusText.textContent = "LOCAL SANDBOX MODE";
+        statusText.style.color = "#ff6b2b";
+      }
+    }
   } else {
     document.body.classList.remove("admin-active");
     if (footerStatus) {
