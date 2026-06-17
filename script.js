@@ -1477,7 +1477,7 @@ function initAdminDashboard() {
       const processSave = (imageUrl) => {
         // If updating an existing card
         if (id) {
-          const originalProj = projects.find(p => p.id === id);
+          const originalProj = projects.find(p => p.id == id);
           const finalImage = imageUrl || (originalProj ? originalProj.image : "assets/electronics.png");
 
           const updatedRecord = {
@@ -1496,7 +1496,7 @@ function initAdminDashboard() {
               .catch(err => alert("Firestore update failed: " + err));
             finishSave();
           } else {
-            const index = projects.findIndex(p => p.id === id);
+            const index = projects.findIndex(p => p.id == id);
             projects[index] = updatedRecord;
             localStorage.setItem("shibili_projects", JSON.stringify(projects));
             renderProjectsGrid(projects);
@@ -1568,14 +1568,14 @@ function initAdminDashboard() {
       if (id) {
         // Edit existing skill
         record.id = id;
-        const originalSkill = skills.find(s => s.id === id);
+        const originalSkill = skills.find(s => s.id == id);
 
         if (isFirebaseEnabled) {
           db.collection("skills").doc(originalSkill.firebaseId).update(record)
             .then(() => finishSave())
             .catch(err => alert("Firestore update failed: " + err));
         } else {
-          const index = skills.findIndex(s => s.id === id);
+          const index = skills.findIndex(s => s.id == id);
           skills[index] = record;
           localStorage.setItem("shibili_skills", JSON.stringify(skills));
           renderSkills(skills);
@@ -1640,14 +1640,14 @@ function initAdminDashboard() {
       if (id) {
         // Edit existing timeline item
         record.id = id;
-        const originalItem = timeline.find(t => t.id === id);
+        const originalItem = timeline.find(t => t.id == id);
 
         if (isFirebaseEnabled) {
           db.collection("timeline").doc(originalItem.firebaseId).update(record)
             .then(() => finishSave())
             .catch(err => alert("Firestore update failed: " + err));
         } else {
-          const index = timeline.findIndex(t => t.id === id);
+          const index = timeline.findIndex(t => t.id == id);
           timeline[index] = record;
           localStorage.setItem("shibili_timeline", JSON.stringify(timeline));
           renderTimeline(timeline);
@@ -1775,7 +1775,7 @@ function setAdminState(isLoggedIn) {
 
 // Global functions exposed to inline events
 function openProjectEditor(id) {
-  const proj = projects.find(p => p.id === id);
+  const proj = projects.find(p => p.id == id);
   if (!proj) return;
 
   document.getElementById("editor-project-id").value = proj.id;
@@ -1801,7 +1801,7 @@ function openProjectEditor(id) {
 function deleteProject(id) {
   if (confirm("Are you sure you want to delete this project from the database? This action is irreversible.")) {
     if (isFirebaseEnabled) {
-      const proj = projects.find(p => p.id === id);
+      const proj = projects.find(p => p.id == id);
       db.collection("projects").doc(proj.firebaseId).delete()
         .catch(err => alert("Firestore delete failed: " + err));
     } else {
@@ -1813,7 +1813,7 @@ function deleteProject(id) {
 }
 
 function openSkillEditor(id) {
-  const skill = skills.find(s => s.id === id);
+  const skill = skills.find(s => s.id == id);
   if (!skill) return;
 
   document.getElementById("editor-skill-id").value = skill.id;
@@ -1828,7 +1828,7 @@ function openSkillEditor(id) {
 function deleteSkill(id) {
   if (confirm("Are you sure you want to delete this skill? This action is irreversible.")) {
     if (isFirebaseEnabled) {
-      const skill = skills.find(s => s.id === id);
+      const skill = skills.find(s => s.id == id);
       db.collection("skills").doc(skill.firebaseId).delete()
         .catch(err => alert("Firestore delete failed: " + err));
     } else {
@@ -1840,7 +1840,7 @@ function deleteSkill(id) {
 }
 
 function openTimelineEditor(id) {
-  const item = timeline.find(t => t.id === id);
+  const item = timeline.find(t => t.id == id);
   if (!item) return;
 
   document.getElementById("editor-timeline-id").value = item.id;
@@ -1858,7 +1858,7 @@ function openTimelineEditor(id) {
 function deleteTimeline(id) {
   if (confirm("Are you sure you want to delete this timeline item? This action is irreversible.")) {
     if (isFirebaseEnabled) {
-      const item = timeline.find(t => t.id === id);
+      const item = timeline.find(t => t.id == id);
       db.collection("timeline").doc(item.firebaseId).delete()
         .catch(err => alert("Firestore delete failed: " + err));
     } else {
