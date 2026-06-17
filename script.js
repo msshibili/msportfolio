@@ -1754,7 +1754,7 @@ function initAdminDashboard() {
       // If admin overlay is active/visible, don't open the lightbox
       const overlay = e.target.closest(".project-img-wrapper")?.querySelector(".project-admin-overlay");
       const isAdminActive = overlay && window.getComputedStyle(overlay).opacity !== "0";
-      
+
       if (!isAdminActive) {
         openLightbox(e.target.src);
       }
