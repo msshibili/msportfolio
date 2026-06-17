@@ -1748,15 +1748,21 @@ function initAdminDashboard() {
     }
   }
 
-  // Event delegation to open lightbox when clicking any project image
+  // Event delegation to open lightbox when clicking anywhere on a project image/wrapper
   document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("project-img")) {
-      // If admin overlay is active/visible, don't open the lightbox
-      const overlay = e.target.closest(".project-img-wrapper")?.querySelector(".project-admin-overlay");
-      const isAdminActive = overlay && window.getComputedStyle(overlay).opacity !== "0";
-
-      if (!isAdminActive) {
-        openLightbox(e.target.src);
+    const imgWrapper = e.target.closest(".project-img-wrapper");
+    if (imgWrapper) {
+      // If admin mode is active and they click the edit/delete controls, do not open the lightbox
+      if (e.target.closest(".project-admin-overlay") || e.target.classList.contains("btn-admin-edit") || e.target.classList.contains("btn-admin-delete")) {
+        return;
+      }
+      
+      const img = imgWrapper.querySelector(".project-img");
+      if (img && img.src) {
+        const isAdminActive = document.body.classList.contains("admin-active");
+        if (!isAdminActive) {
+          openLightbox(img.src);
+        }
       }
     }
   });
