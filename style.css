@@ -1000,6 +1000,7 @@ button, input, textarea {
   aspect-ratio: 16/10;
   background-color: var(--bg-darker);
   border-bottom: 1px solid var(--border-color);
+  cursor: pointer; /* Fixes iOS Safari click delegation bug */
 }
 
 .project-img {
@@ -1007,10 +1008,17 @@ button, input, textarea {
   height: 100%;
   object-fit: cover;
   transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
 }
 
 .project-card:hover .project-img {
   transform: scale(1.05);
+}
+
+/* Satisfaction tactile click-down feedback on click or mobile tap */
+.project-img-wrapper:active .project-img {
+  transform: scale(0.96) !important;
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .project-overlay {
