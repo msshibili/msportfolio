@@ -1112,36 +1112,36 @@ function initContactForm() {
           _subject: subject
         })
       })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log("[SYSTEM] FormSubmit success:", data);
-        submitBtn.innerHTML = `<span>TRANSMITTED</span> <i class="fa-solid fa-check"></i>`;
-        successBanner.classList.add('active');
-        form.reset();
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("[SYSTEM] FormSubmit success:", data);
+          submitBtn.innerHTML = `<span>TRANSMITTED</span> <i class="fa-solid fa-check"></i>`;
+          successBanner.classList.add('active');
+          form.reset();
 
-        document.querySelectorAll('.form-group').forEach(group => group.classList.remove('invalid'));
+          document.querySelectorAll('.form-group').forEach(group => group.classList.remove('invalid'));
 
-        setTimeout(() => {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = origText;
-          successBanner.classList.remove('active');
-        }, 5000);
-      })
-      .catch(error => {
-        console.error("[SYSTEM] FormSubmit error:", error);
-        // Visual indicator of error
-        submitBtn.innerHTML = `<span>TRANSMISSION FAILED</span> <i class="fa-solid fa-triangle-exclamation"></i>`;
-        alert("Oops! There was a problem transmitting your message. Please check your internet connection and try again.");
-        setTimeout(() => {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = origText;
-        }, 5000);
-      });
+          setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origText;
+            successBanner.classList.remove('active');
+          }, 5000);
+        })
+        .catch(error => {
+          console.error("[SYSTEM] FormSubmit error:", error);
+          // Visual indicator of error
+          submitBtn.innerHTML = `<span>TRANSMISSION FAILED</span> <i class="fa-solid fa-triangle-exclamation"></i>`;
+          alert("Oops! There was a problem transmitting your message. Please check your internet connection and try again.");
+          setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origText;
+          }, 5000);
+        });
     } else {
       if (!isNameValid) document.getElementById('name-error').style.display = 'block';
       if (!isEmailValid) document.getElementById('email-error').style.display = 'block';
@@ -1312,6 +1312,52 @@ function initAdminDashboard() {
   if (timelineClose) timelineClose.addEventListener("click", () => timelineModal.classList.remove("active"));
   if (timelineCancel) timelineCancel.addEventListener("click", () => timelineModal.classList.remove("active"));
 
+  // --- IMAGE COMPRESSION UTILITY ---
+  function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error("Canvas compression failed"));
+            },
+            "image/jpeg",
+            quality
+          );
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  }
+
   // --- SAVE/EDIT PROJECT FORM ---
   if (editorForm) {
     editorForm.addEventListener("submit", (e) => {
@@ -1349,11 +1395,10 @@ function initAdminDashboard() {
             image: finalImage
           };
 
-                    if (isFirebaseEnabled) {
+          if (isFirebaseEnabled) {
             db.collection("projects").doc(originalProj.firebaseId).update(updatedRecord)
               .catch(err => alert("Firestore update failed: " + err));
-            
-            finishSave(); // Call immediately instead of waiting inside .then()
+            finishSave();
           } else {
             const index = projects.findIndex(p => p.id === id);
             projects[index] = updatedRecord;
@@ -1361,7 +1406,7 @@ function initAdminDashboard() {
             renderProjectsGrid(projects);
             finishSave();
           }
-
+        }
         // If creating a new card
         else {
           const newId = (projects.length > 0) ? (Math.max(...projects.map(p => parseInt(p.id))) + 1).toString() : "1";
@@ -1378,18 +1423,16 @@ function initAdminDashboard() {
             image: finalImage
           };
 
-                    if (isFirebaseEnabled) {
+          if (isFirebaseEnabled) {
             db.collection("projects").add(newRecord)
               .catch(err => alert("Firestore write failed: " + err));
-            
-            finishSave(); // Call immediately instead of waiting inside .then()
+            finishSave();
           } else {
             projects.push(newRecord);
             localStorage.setItem("shibili_projects", JSON.stringify(projects));
             renderProjectsGrid(projects);
             finishSave();
           }
-
         }
       };
 
@@ -1399,22 +1442,22 @@ function initAdminDashboard() {
         editorModal.classList.remove("active");
       }
 
-           // Check for image upload
+      // Check for image upload
       if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
 
         if (isFirebaseEnabled) {
+          // Firebase Cloud Storage upload
           const progressContainer = document.getElementById("upload-progress-container");
           const progressPercent = document.getElementById("upload-progress-percent");
           const progressFill = document.getElementById("upload-progress-fill");
 
           progressContainer.style.display = "block";
 
-          // Compress the image before uploading
+          // Compress image before uploading
           compressImage(file, 800, 800, 0.75)
             .then((compressedBlob) => {
               const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-              // Save as .jpg since compression outputs a jpeg blob
               const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${fileName}.jpg`);
               const uploadTask = storageRef.put(compressedBlob);
 
@@ -1438,28 +1481,29 @@ function initAdminDashboard() {
               );
             })
             .catch((err) => {
-              console.error("Compression failed, using fallback upload:", err);
-              // Fallback to uploading original uncompressed file if compression errors
+              console.error("Compression failed, uploading original file:", err);
               const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${file.name}`);
               const uploadTask = storageRef.put(file);
-              // ... [Rest of original uploadTask progress handlers] ...
-            });
-        } else {
-          // Sandbox FileReader base64 fallback
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            processSave(e.target.result);
-          };
-          reader.readAsDataURL(file);
-        }
-      } else {
-        // No new file, process immediately
-        processSave(null);
-      }
 
-              });
-            }
-          );
+              uploadTask.on('state_changed',
+                (snapshot) => {
+                  const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                  progressPercent.textContent = `${progress}%`;
+                  progressFill.style.width = `${progress}%`;
+                },
+                (error) => {
+                  console.error("Storage upload failed:", error);
+                  alert("Storage upload failed: " + error.message);
+                  saveBtn.disabled = false;
+                  saveBtn.innerHTML = origSaveText;
+                },
+                () => {
+                  uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                    processSave(downloadURL);
+                  });
+                }
+              );
+            });
         } else {
           // Sandbox FileReader base64 fallback
           const reader = new FileReader();
@@ -1778,60 +1822,6 @@ function deleteTimeline(id) {
       renderTimeline(timeline);
     }
   }
-}
-
-/**
- * Compresses an image file client-side using a temporary HTML5 canvas.
- * @param {File} file - The original file from the input field.
- * @param {number} maxWidth - Max width for the scaled image.
- * @param {number} maxHeight - Max height for the scaled image.
- * @param {number} quality - Quality level (0.0 to 1.0).
- * @returns {Promise<Blob>} - Resolves with the compressed JPEG blob.
- */
-function compressImage(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-
-        // Maintain ratio
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Canvas compression failed"));
-          },
-          "image/jpeg",
-          quality
-        );
-      };
-      img.onerror = (err) => reject(err);
-    };
-    reader.onerror = (err) => reject(err);
-  });
 }
 
 // Expose functions globally for dynamic elements
