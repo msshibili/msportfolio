@@ -13,6 +13,8 @@ let auth = null;
 let storage = null;
 let isFirebaseEnabled = false;
 let currentAdminUser = null;
+let currentUploadUrl = null;
+let isCurrentlyUploading = false;
 
 // Firebase Configuration Block
 // Insert your Firebase credentials here to enable cloud syncing and storage uploads!
@@ -637,6 +639,10 @@ function initBackgroundParticles() {
   }
 
   function loop() {
+    if (document.querySelector('.modal.active')) {
+      requestAnimationFrame(loop);
+      return;
+    }
     ctx.clearRect(0, 0, width, height);
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
@@ -793,6 +799,10 @@ function initHeroCircuit3D() {
   }
 
   function rotate3D() {
+    if (document.querySelector('.modal.active')) {
+      requestAnimationFrame(rotate3D);
+      return;
+    }
     ctx.clearRect(0, 0, width, height);
 
     const targetAngleY = angleY + 0.003;
@@ -1275,6 +1285,10 @@ function initAdminDashboard() {
       document.getElementById("editor-modal-title").textContent = "CREATE_NEW_PROJECT.sys";
       editorForm.reset();
 
+      // Reset upload state
+      currentUploadUrl = null;
+      isCurrentlyUploading = false;
+
       // Clear progress
       document.getElementById("upload-progress-container").style.display = "none";
       document.getElementById("upload-progress-fill").style.width = "0%";
@@ -1358,10 +1372,103 @@ function initAdminDashboard() {
     });
   }
 
+  // --- UPLOAD FILE IMMEDIATELY ON FILE SELECT ---
+  const fileInput = document.getElementById("editor-image-file");
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const progressContainer = document.getElementById("upload-progress-container");
+      const progressPercent = document.getElementById("upload-progress-percent");
+      const progressFill = document.getElementById("upload-progress-fill");
+
+      isCurrentlyUploading = true;
+      progressContainer.style.display = "block";
+      progressPercent.textContent = "0%";
+      progressFill.style.width = "0%";
+
+      if (isFirebaseEnabled) {
+        // Compress image before uploading
+        compressImage(file, 800, 800, 0.75)
+          .then((compressedBlob) => {
+            const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${fileName}.jpg`);
+            const uploadTask = storageRef.put(compressedBlob);
+
+            uploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                progressPercent.textContent = `${progress}%`;
+                progressFill.style.width = `${progress}%`;
+              },
+              (error) => {
+                console.error("Storage upload failed:", error);
+                alert("Storage upload failed: " + error.message);
+                isCurrentlyUploading = false;
+                progressContainer.style.display = "none";
+              },
+              () => {
+                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                  currentUploadUrl = downloadURL;
+                  isCurrentlyUploading = false;
+                });
+              }
+            );
+          })
+          .catch((err) => {
+            console.error("Compression failed, uploading original file:", err);
+            const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${file.name}`);
+            const uploadTask = storageRef.put(file);
+
+            uploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                progressPercent.textContent = `${progress}%`;
+                progressFill.style.width = `${progress}%`;
+              },
+              (error) => {
+                console.error("Storage upload failed:", error);
+                alert("Storage upload failed: " + error.message);
+                isCurrentlyUploading = false;
+                progressContainer.style.display = "none";
+              },
+              () => {
+                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                  currentUploadUrl = downloadURL;
+                  isCurrentlyUploading = false;
+                });
+              }
+            );
+          });
+      } else {
+        // Sandbox FileReader base64 fallback
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          currentUploadUrl = event.target.result;
+          isCurrentlyUploading = false;
+          progressPercent.textContent = "100%";
+          progressFill.style.width = "100%";
+        };
+        reader.onerror = function (err) {
+          console.error("FileReader failed:", err);
+          isCurrentlyUploading = false;
+          progressContainer.style.display = "none";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
   // --- SAVE/EDIT PROJECT FORM ---
   if (editorForm) {
     editorForm.addEventListener("submit", (e) => {
       e.preventDefault();
+
+      if (isCurrentlyUploading) {
+        alert("Please wait for the image to finish uploading before saving.");
+        return;
+      }
 
       const id = document.getElementById("editor-project-id").value;
       const title = document.getElementById("editor-title").value.trim();
@@ -1370,7 +1477,6 @@ function initAdminDashboard() {
       const tech = document.getElementById("editor-tech").value.trim();
       const demo = document.getElementById("editor-demo").value.trim();
       const repo = document.getElementById("editor-repo").value.trim();
-      const fileInput = document.getElementById("editor-image-file");
 
       const saveBtn = document.getElementById("btn-editor-save");
       const origSaveText = saveBtn.innerHTML;
@@ -1442,80 +1548,8 @@ function initAdminDashboard() {
         editorModal.classList.remove("active");
       }
 
-      // Check for image upload
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-
-        if (isFirebaseEnabled) {
-          // Firebase Cloud Storage upload
-          const progressContainer = document.getElementById("upload-progress-container");
-          const progressPercent = document.getElementById("upload-progress-percent");
-          const progressFill = document.getElementById("upload-progress-fill");
-
-          progressContainer.style.display = "block";
-
-          // Compress image before uploading
-          compressImage(file, 800, 800, 0.75)
-            .then((compressedBlob) => {
-              const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-              const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${fileName}.jpg`);
-              const uploadTask = storageRef.put(compressedBlob);
-
-              uploadTask.on('state_changed',
-                (snapshot) => {
-                  const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                  progressPercent.textContent = `${progress}%`;
-                  progressFill.style.width = `${progress}%`;
-                },
-                (error) => {
-                  console.error("Storage upload failed:", error);
-                  alert("Storage upload failed: " + error.message);
-                  saveBtn.disabled = false;
-                  saveBtn.innerHTML = origSaveText;
-                },
-                () => {
-                  uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                    processSave(downloadURL);
-                  });
-                }
-              );
-            })
-            .catch((err) => {
-              console.error("Compression failed, uploading original file:", err);
-              const storageRef = storage.ref(`project_thumbnails/${Date.now()}_${file.name}`);
-              const uploadTask = storageRef.put(file);
-
-              uploadTask.on('state_changed',
-                (snapshot) => {
-                  const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                  progressPercent.textContent = `${progress}%`;
-                  progressFill.style.width = `${progress}%`;
-                },
-                (error) => {
-                  console.error("Storage upload failed:", error);
-                  alert("Storage upload failed: " + error.message);
-                  saveBtn.disabled = false;
-                  saveBtn.innerHTML = origSaveText;
-                },
-                () => {
-                  uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                    processSave(downloadURL);
-                  });
-                }
-              );
-            });
-        } else {
-          // Sandbox FileReader base64 fallback
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            processSave(e.target.result);
-          };
-          reader.readAsDataURL(file);
-        }
-      } else {
-        // No new file, process immediately
-        processSave(null);
-      }
+      // Process save immediately using pre-uploaded image URL
+      processSave(currentUploadUrl);
     });
   }
 
@@ -1745,6 +1779,10 @@ function openProjectEditor(id) {
   document.getElementById("editor-tech").value = proj.tech;
   document.getElementById("editor-demo").value = proj.demo;
   document.getElementById("editor-repo").value = proj.repo;
+
+  // Reset upload state to current project image
+  currentUploadUrl = proj.image || null;
+  isCurrentlyUploading = false;
 
   // Clear progress
   document.getElementById("upload-progress-container").style.display = "none";
