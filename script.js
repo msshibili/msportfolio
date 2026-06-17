@@ -1727,6 +1727,59 @@ function initAdminDashboard() {
       document.getElementById("copy-success-text").style.display = "block";
     });
   }
+
+  // --- PROJECT IMAGE LIGHTBOX ---
+  const lightboxModal = document.getElementById("image-lightbox-modal");
+  const lightboxImg = document.getElementById("lightbox-img");
+  const lightboxClose = document.getElementById("lightbox-close-btn");
+
+  function openLightbox(src) {
+    if (lightboxModal && lightboxImg) {
+      lightboxImg.src = src;
+      lightboxModal.classList.add("active");
+      document.body.style.overflow = "hidden"; // Disable background scrolling
+    }
+  }
+
+  function closeLightbox() {
+    if (lightboxModal) {
+      lightboxModal.classList.remove("active");
+      document.body.style.overflow = ""; // Re-enable scrolling
+    }
+  }
+
+  // Event delegation to open lightbox when clicking any project image
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("project-img")) {
+      // If admin overlay is active/visible, don't open the lightbox
+      const overlay = e.target.closest(".project-img-wrapper")?.querySelector(".project-admin-overlay");
+      const isAdminActive = overlay && window.getComputedStyle(overlay).opacity !== "0";
+      
+      if (!isAdminActive) {
+        openLightbox(e.target.src);
+      }
+    }
+  });
+
+  if (lightboxClose) {
+    lightboxClose.addEventListener("click", closeLightbox);
+  }
+
+  if (lightboxModal) {
+    // Close lightbox if clicking outside the image
+    lightboxModal.addEventListener("click", (e) => {
+      if (e.target === lightboxModal) {
+        closeLightbox();
+      }
+    });
+  }
+
+  // Close lightbox with Escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeLightbox();
+    }
+  });
 }
 
 // Set visual theme toggles when logged in as admin
